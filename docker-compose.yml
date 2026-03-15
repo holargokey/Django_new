@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    container_name: django_preprod
+    restart: always
+
+    environment:
+      PORT: 8000
+      DJANGO_SETTINGS_MODULE: config.settings
+
+    env_file:
+      - .env
+
+    ports:
+      - "8001:8000"
+
+    volumes:
+      - uploads_preprod:/app/uploads
+      - chromadb_preprod:/app/chroma_data
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  uploads_preprod:
+  chromadb_preprod:
