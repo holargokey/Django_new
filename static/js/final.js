@@ -462,8 +462,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (label) label.textContent = "Uploading… 0%";
 
-      // ✅ 3) Start polling RIGHT NOW (server-side upload progress)
-      startProgressPoller(jobId);
+      // 3) Start polling AFTER a short delay to let XHR get ahead
+      setTimeout(() => startProgressPoller(jobId), 800);
 
       // 4) Upload via XHR (WITH client-side progress)
       const formData = new FormData();
@@ -490,7 +490,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       xhr.addEventListener("load", () => {
               __clientUploading = false;
-              window.__uploadFloor = 40;
+              window.__uploadFloor = 45;
 
               // Smoothly animate from current position to 45%
               animateToTarget(bar, label, 45, "Processing", 600);
@@ -541,6 +541,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function startProgressPoller(jobId) {
     let lastPct = window.__uploadFloor || 0;
     window.__uploadFloor = 0;
+
+    // If we already have a floor from the upload, set the bar immediately
+    if (lastPct > 0) {
+      const buildBar2 = document.getElementById("buildBar");
+      const buildLabel2 = document.getElementById("buildLabel");
+      if (buildBar2) buildBar2.style.width = lastPct + "%";
+      if (buildLabel2) buildLabel2.textContent = `Processing… ${lastPct}%`;
+    }
     let lastPhase = "";
     const buildProgress = document.getElementById("buildProgress");
     const buildBar = document.getElementById("buildBar");
@@ -587,7 +595,7 @@ document.addEventListener("DOMContentLoaded", () => {
         lastPhase = phase;
 
         // While client upload is active, ignore server upload < 40
-        if (__clientUploading && phase === "uploading" && pct < 40) {
+        if (__clientUploading && pct < 40) {
           return;
         }
 
