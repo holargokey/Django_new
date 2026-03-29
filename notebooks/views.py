@@ -761,3 +761,7 @@ def send_feedback(request):
         logging.getLogger(__name__).exception("feedback send failed")
         # tell the client what went wrong (remove before production)
         return JsonResponse({"status": "error", "message": f"Unable to send feedback: {e}"})
+
+#Olagoke testing if victor sees my changes
+def test_view(request):
+    return JsonResponse({"ok": True, "message": "If you see this, the test view is working!"})
