@@ -767,3 +767,7 @@ def test_view(request):
     return JsonResponse({"ok": True, "message": "If you see this, the test view is working!"})
 
 #victor testing
+
+#Additional test view to check if victor sees my changes
+def test_view_2(request):
+    return JsonResponse({"ok": True, "message": "This is the second test view. If you see this, it means the new changes are live!"})
