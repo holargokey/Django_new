@@ -722,6 +722,14 @@ def upload(request):
         messages.error(request, msg)
         return redirect("upload_notebook")
 
+    MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
+    if f.size > MAX_UPLOAD_BYTES:
+        msg = "File too large. Maximum upload size is 20 MB."
+        if is_xhr:
+            return JsonResponse({"ok": False, "error": msg}, status=413)
+        messages.error(request, msg)
+        return redirect("upload_notebook")
+
     # Enforce 5-file cap
     MAX_DOCS = 5
     if request.user.is_authenticated:
