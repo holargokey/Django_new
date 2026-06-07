@@ -249,6 +249,7 @@
         document.body.style.overflow = 'hidden';
         clearFeedbackFlash();
     }
+    window.openFeedbackModal = openFeedbackModal;
 
     function closeFeedbackModal() {
         if (!feedbackBackdrop) return;
@@ -303,6 +304,11 @@
                 showFeedbackFlash(result.message, flashType);
 
                 if (result.status === 'success') {
+                    try {
+                        window.localStorage.setItem('studyassistsFeedbackGiven', 'true');
+                    } catch (e) {
+                        // Ignore storage failures; feedback was still sent.
+                    }
                     feedbackForm.reset();
                 }
             })

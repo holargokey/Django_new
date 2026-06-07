@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const statusEl = $("opStatus");
   console.log("final.js loaded ✅");
   console.log("delete button found:", !!document.getElementById("deleteDocBtn"));
+  let quizFeedbackPromptShown = false;
+  const FEEDBACK_GIVEN_KEY = "studyassistsFeedbackGiven";
 
   // showAlert now reuses the existing flash styles instead of Bootstrap alerts
   function showAlert(message, type = "success", timeout = 4000) {
@@ -470,24 +472,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function showConfirmModal(message) {
+  function showConfirmModal(message, confirmText = "OK", cancelText = "") {
     return new Promise((resolve) => {
       const modal = $("customModal");
       const modalMsg = $("customModalMsg");
       const modalBtn = $("customModalBtn");      // OK / Confirm
       const modalClose = $("customModalClose");  // X / Cancel
+      const modalFooter = modalBtn?.parentElement;
 
       if (!modal || !modalMsg || !modalBtn || !modalClose) {
         resolve(false);
         return;
       }
 
+      const originalBtnText = modalBtn.textContent;
+      const cancelBtn = cancelText ? document.createElement("button") : null;
       modalMsg.textContent = message;
+      modalBtn.textContent = confirmText;
+
+      if (cancelBtn && modalFooter) {
+        cancelBtn.type = "button";
+        cancelBtn.className = "mymodalbutton mymodalbutton-secondary";
+        cancelBtn.textContent = cancelText;
+        modalFooter.insertBefore(cancelBtn, modalBtn);
+      }
+
       modal.classList.add("show");
 
       function cleanup() {
         modal.classList.remove("show");
+        modalBtn.textContent = originalBtnText;
         modalBtn.removeEventListener("click", onConfirm);
+        cancelBtn?.removeEventListener("click", onCancel);
+        cancelBtn?.remove();
         modalClose.removeEventListener("click", onCancel);
         modal.removeEventListener("click", onOutside);
         window.removeEventListener("keydown", onEsc);
@@ -512,10 +529,34 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       modalBtn.addEventListener("click", onConfirm);
+      cancelBtn?.addEventListener("click", onCancel);
       modalClose.addEventListener("click", onCancel);
       modal.addEventListener("click", onOutside);
       window.addEventListener("keydown", onEsc);
     });
+  }
+
+  function openFeedbackModalFromQuiz() {
+    if (typeof window.openFeedbackModal === "function") {
+      window.openFeedbackModal();
+      return;
+    }
+    document.querySelector(".sa-open-feedback, .feedback-open")?.click();
+  }
+
+  function promptForQuizFeedback() {
+    showConfirmModal("Would you like to give feedback about this quiz experience?", "Yes", "No")
+      .then((confirmed) => {
+        if (confirmed) openFeedbackModalFromQuiz();
+      });
+  }
+
+  function hasGivenFeedback() {
+    try {
+      return window.localStorage.getItem(FEEDBACK_GIVEN_KEY) === "true";
+    } catch (e) {
+      return false;
+    }
   }
 
 
@@ -862,6 +903,7 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("QUIZ DATA:", JSON.stringify(quiz, null, 2));
     if (!quizList) return;
     quizList.innerHTML = '';
+    quizFeedbackPromptShown = false;
     // record quiz start time (used for avg time per question)
     window.__quizStartTime = Date.now();
     quiz.forEach((q, idx) => {
@@ -1070,6 +1112,10 @@ document.addEventListener("DOMContentLoaded", () => {
       generateStatus.textContent = forceSubmit ? '⏰ Auto-submitted and graded.' : '✅ Graded.';
     }
 
+    if (!forceSubmit && !quizFeedbackPromptShown && !hasGivenFeedback()) {
+      quizFeedbackPromptShown = true;
+      promptForQuizFeedback();
+    }
 
   }
 
@@ -1314,6 +1360,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function clearPreviousQuiz() {
     lastQuiz = [];
     quizSubmitted = false;
+    quizFeedbackPromptShown = false;
     clearSimulationTimer();
 
     if (quizList) quizList.innerHTML = "";
