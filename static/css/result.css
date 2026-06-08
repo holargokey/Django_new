@@ -116,10 +116,14 @@ tbody tr:hover {
         font-weight: 600;
         padding: 0.35rem 0.6rem;
         border-radius: 8px;
-        text-align: center;
         font-size: 0.75rem;
-        white-space: nowrap;
+        white-space: normal;
         word-break: break-word;
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
     }
 
     /* VALUE BOX */
