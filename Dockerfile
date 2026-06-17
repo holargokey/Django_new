@@ -32,10 +32,14 @@ RUN SECRET_KEY=temp-build-key python manage.py collectstatic --noinput
 RUN mkdir -p /app/uploads \
     && chmod 755 /app/uploads
 
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 RUN useradd -m deployuser \
     && chown -R deployuser:deployuser $APP_HOME
 
 USER deployuser
 EXPOSE 8000
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--threads", "4", "--timeout", "1000", "--graceful-timeout", "30", "--keep-alive", "5"]
