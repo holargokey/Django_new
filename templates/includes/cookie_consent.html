@@ -31,9 +31,33 @@
             if (action === 'get') return localStorage.getItem(key);
             if (action === 'set') localStorage.setItem(key, value);
         } catch (e) {
-            // Safari private browsing blocks localStorage — fail silently
             return null;
         }
+    }
+
+    function loadGTM() {
+        if (window.__gtmLoaded) return;
+        window.__gtmLoaded = true;
+        (function (w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s),
+                dl = l !== 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-MRKQ9T4W');
+
+        var ns = document.createElement('noscript');
+        var iframe = document.createElement('iframe');
+        iframe.src = 'https://www.googletagmanager.com/ns.html?id=GTM-MRKQ9T4W';
+        iframe.height = '0';
+        iframe.width = '0';
+        iframe.style.display = 'none';
+        iframe.style.visibility = 'hidden';
+        ns.appendChild(iframe);
+        document.body.insertBefore(ns, document.body.firstChild);
     }
 
     function dismissCookieBanner(choice) {
@@ -42,13 +66,18 @@
             dialog.setAttribute('aria-hidden', 'true');
             dialog.classList.remove('active');
         }
-        if (choice) safeLocalStorage('set', 'cookieConsent', choice);
+        if (choice) {
+            safeLocalStorage('set', 'cookieConsent', choice);
+            if (choice === 'accepted') loadGTM();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         var consent = safeLocalStorage('get', 'cookieConsent');
         var cookieDialog = document.getElementById('cookieConsent');
-        if (!consent && cookieDialog) {
+        if (consent === 'accepted') {
+            loadGTM();
+        } else if (!consent && cookieDialog) {
             setTimeout(function () {
                 cookieDialog.classList.add('active');
                 cookieDialog.setAttribute('aria-hidden', 'false');

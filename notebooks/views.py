@@ -27,7 +27,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.cache import never_cache
 from django.core.cache import cache
 from django.template.loader import render_to_string
@@ -312,7 +312,7 @@ def _process_job(
 # ---------- Views (routes) ----------
 
 
-@require_GET
+@require_http_methods(["GET", "HEAD"])
 def home(request):
     return render(request, "home.html")
 
