@@ -1,23 +1,38 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: postgres_local
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     build: .
     container_name: django_preprod
     restart: always
-
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       PORT: 8000
       DJANGO_SETTINGS_MODULE: config.settings
-
+      POSTGRES_HOST: db
     env_file:
       - .env
-
     ports:
       - "8001:8000"
-
     volumes:
       - uploads_preprod:/app/uploads
       - chromadb_preprod:/app/chroma_data
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
@@ -25,5 +40,6 @@ services:
       retries: 5
 
 volumes:
+  postgres_data:
   uploads_preprod:
   chromadb_preprod:

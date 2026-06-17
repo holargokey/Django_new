@@ -73,6 +73,14 @@ a {
 
 }
 
+.brand-logo-img {
+    display: block;
+    width: auto;
+    height: 34px;
+    max-width: 190px;
+    object-fit: contain;
+}
+
 .sa-nav-links {
     display: flex;
     list-style: none;
@@ -680,9 +688,18 @@ footer {
 }
 
 .sa-login-logo {
-    display: flex;
+    display: inline-flex;
     justify-content: center;
+    align-items: center;
     margin-bottom: 24px;
+}
+
+.sa-login-logo-img {
+    display: block;
+    width: auto;
+    height: 28px;
+    max-width: 160px;
+    object-fit: contain;
 }
 
 .sa-login-modal h2 {

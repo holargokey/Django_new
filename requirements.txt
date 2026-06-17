@@ -15,8 +15,7 @@ pydantic-settings==2.10.1
 pydantic_core==2.33.2
 
 # Database
-PyMySQL==1.1.1
-mysql-connector-python==9.0.0
+psycopg2-binary==2.9.10
 SQLAlchemy==2.0.43
 redis==7.2.0
 

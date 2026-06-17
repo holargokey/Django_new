@@ -18,6 +18,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const statusEl = $("opStatus");
   console.log("final.js loaded ✅");
   console.log("delete button found:", !!document.getElementById("deleteDocBtn"));
+  let quizFeedbackPromptShown = false;
+  let quizFeedbackPromptTimer = null;
+  const FEEDBACK_GIVEN_KEY = "studyassistsFeedbackGiven";
 
   // showAlert now reuses the existing flash styles instead of Bootstrap alerts
   function showAlert(message, type = "success", timeout = 4000) {
@@ -470,24 +473,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function showConfirmModal(message) {
+  function showConfirmModal(message, confirmText = "OK", cancelText = "") {
     return new Promise((resolve) => {
       const modal = $("customModal");
       const modalMsg = $("customModalMsg");
       const modalBtn = $("customModalBtn");      // OK / Confirm
       const modalClose = $("customModalClose");  // X / Cancel
+      const modalFooter = modalBtn?.parentElement;
 
       if (!modal || !modalMsg || !modalBtn || !modalClose) {
         resolve(false);
         return;
       }
 
+      const originalBtnText = modalBtn.textContent;
+      const cancelBtn = cancelText ? document.createElement("button") : null;
       modalMsg.textContent = message;
+      modalBtn.textContent = confirmText;
+
+      if (cancelBtn && modalFooter) {
+        cancelBtn.type = "button";
+        cancelBtn.className = "mymodalbutton mymodalbutton-secondary";
+        cancelBtn.textContent = cancelText;
+        modalFooter.insertBefore(cancelBtn, modalBtn);
+      }
+
       modal.classList.add("show");
 
       function cleanup() {
         modal.classList.remove("show");
+        modalBtn.textContent = originalBtnText;
         modalBtn.removeEventListener("click", onConfirm);
+        cancelBtn?.removeEventListener("click", onCancel);
+        cancelBtn?.remove();
         modalClose.removeEventListener("click", onCancel);
         modal.removeEventListener("click", onOutside);
         window.removeEventListener("keydown", onEsc);
@@ -512,10 +530,48 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       modalBtn.addEventListener("click", onConfirm);
+      cancelBtn?.addEventListener("click", onCancel);
       modalClose.addEventListener("click", onCancel);
       modal.addEventListener("click", onOutside);
       window.addEventListener("keydown", onEsc);
     });
+  }
+
+  function openFeedbackModalFromQuiz() {
+    if (typeof window.openFeedbackModal === "function") {
+      window.openFeedbackModal();
+      return;
+    }
+    document.querySelector(".sa-open-feedback, .feedback-open")?.click();
+  }
+
+  function promptForQuizFeedback() {
+    showConfirmModal("Would you like to give feedback about this quiz experience?", "Yes", "No")
+      .then((confirmed) => {
+        if (confirmed) openFeedbackModalFromQuiz();
+      });
+  }
+
+  function hasGivenFeedback() {
+    try {
+      return window.localStorage.getItem(FEEDBACK_GIVEN_KEY) === "true";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function clearQuizFeedbackPromptTimer() {
+    if (!quizFeedbackPromptTimer) return;
+    clearTimeout(quizFeedbackPromptTimer);
+    quizFeedbackPromptTimer = null;
+  }
+
+  function scheduleQuizFeedbackPrompt() {
+    clearQuizFeedbackPromptTimer();
+    quizFeedbackPromptTimer = setTimeout(() => {
+      quizFeedbackPromptTimer = null;
+      if (!hasGivenFeedback()) promptForQuizFeedback();
+    }, 60000);
   }
 
 
@@ -573,23 +629,34 @@ document.addEventListener("DOMContentLoaded", () => {
         window.__progressPoller = null;
       }
 
+      const submitBtn = uploadForm.querySelector("button[type=submit]");
+      const reEnableBtn = () => submitBtn?.removeAttribute("disabled");
+
       const fileInput = document.getElementById("fileInput");
       const file = fileInput?.files?.[0];
-      //if (!file) { alert("Please choose a file first!"); return; }
 
       if (!file) {
         showModal("Please choose a file first!");
         return;
       }
-      //Disable submit button during upload
-      uploadForm
-        .querySelector("button[type=submit]")
-        ?.setAttribute("disabled", "true");
 
+      const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MB
+      if (file.size > MAX_UPLOAD_BYTES) {
+        showModal("File too large. Maximum upload size is 20 MB.");
+        return;
+      }
 
+      submitBtn?.setAttribute("disabled", "true");
+
+      try {
       // 1) Create job_id before uploading
-      const j = await fetch("/init_upload", { method: "POST", headers: { "X-CSRFToken": getCsrf() } }).then(r => r.json());
-      if (!j.ok) { showModal("Could not start job"); return; }
+      const j = await fetch("/init_upload", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "X-CSRFToken": getCsrf() }
+      }).then(r => r.json()).catch(() => ({}));
+
+      if (!j.ok) { showModal("Could not start upload. Please refresh and try again."); reEnableBtn(); return; }
       const jobId = j.job_id;
 
       // 2) Show progress bar UI
@@ -701,6 +768,11 @@ document.addEventListener("DOMContentLoaded", () => {
       xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
       xhr.setRequestHeader("X-CSRFToken", getCsrf());
       xhr.send(formData);
+
+      } catch (err) {
+        reEnableBtn();
+        showModal("Upload failed. Please refresh the page and try again.");
+      }
 
     });
   }
@@ -862,6 +934,8 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("QUIZ DATA:", JSON.stringify(quiz, null, 2));
     if (!quizList) return;
     quizList.innerHTML = '';
+    quizFeedbackPromptShown = false;
+    clearQuizFeedbackPromptTimer();
     // record quiz start time (used for avg time per question)
     window.__quizStartTime = Date.now();
     quiz.forEach((q, idx) => {
@@ -1070,6 +1144,10 @@ document.addEventListener("DOMContentLoaded", () => {
       generateStatus.textContent = forceSubmit ? '⏰ Auto-submitted and graded.' : '✅ Graded.';
     }
 
+    if (!forceSubmit && !quizFeedbackPromptShown && !hasGivenFeedback()) {
+      quizFeedbackPromptShown = true;
+      scheduleQuizFeedbackPrompt();
+    }
 
   }
 
@@ -1314,6 +1392,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function clearPreviousQuiz() {
     lastQuiz = [];
     quizSubmitted = false;
+    quizFeedbackPromptShown = false;
+    clearQuizFeedbackPromptTimer();
     clearSimulationTimer();
 
     if (quizList) quizList.innerHTML = "";

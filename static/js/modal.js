@@ -249,6 +249,7 @@
         document.body.style.overflow = 'hidden';
         clearFeedbackFlash();
     }
+    window.openFeedbackModal = openFeedbackModal;
 
     function closeFeedbackModal() {
         if (!feedbackBackdrop) return;
@@ -303,6 +304,11 @@
                 showFeedbackFlash(result.message, flashType);
 
                 if (result.status === 'success') {
+                    try {
+                        window.localStorage.setItem('studyassistsFeedbackGiven', 'true');
+                    } catch (e) {
+                        // Ignore storage failures; feedback was still sent.
+                    }
                     feedbackForm.reset();
                 }
             })
@@ -315,5 +321,54 @@
     document.querySelector('.feedback-modal-close')?.addEventListener('click', (e) => {
         e.preventDefault();
         closeFeedbackModal();
+    });
+
+    // Password visibility toggles
+    document.querySelectorAll('.sa-password-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const wrapper = btn.closest('.sa-password-wrapper');
+            const input = wrapper.querySelector('input');
+            const eyeShow = btn.querySelector('.sa-eye-show');
+            const eyeHide = btn.querySelector('.sa-eye-hide');
+            const isVisible = input.type === 'text';
+            input.type = isVisible ? 'password' : 'text';
+            eyeShow.style.display = isVisible ? '' : 'none';
+            eyeHide.style.display = isVisible ? 'none' : '';
+            btn.setAttribute('aria-label', isVisible ? 'Show password' : 'Hide password');
+        });
+    });
+
+    // Signup password confirmation validation
+    const signupForm = document.getElementById('emailSignupForm');
+    const signupPassword = document.getElementById('signupPassword');
+    const signupConfirm = document.getElementById('signupConfirmPassword');
+    const signupPasswordError = document.getElementById('signupPasswordError');
+
+    function validatePasswords() {
+        if (!signupConfirm || !signupPassword || !signupPasswordError) return true;
+        const match = signupPassword.value === signupConfirm.value;
+        if (!match) {
+            signupPasswordError.textContent = 'Passwords do not match.';
+            signupPasswordError.style.display = 'block';
+            signupConfirm.classList.add('sa-input-error');
+            signupConfirm.setCustomValidity('Passwords do not match.');
+        } else {
+            signupPasswordError.textContent = '';
+            signupPasswordError.style.display = 'none';
+            signupConfirm.classList.remove('sa-input-error');
+            signupConfirm.setCustomValidity('');
+        }
+        return match;
+    }
+
+    signupConfirm?.addEventListener('input', validatePasswords);
+    signupPassword?.addEventListener('input', validatePasswords);
+
+    signupForm?.addEventListener('submit', (e) => {
+        if (!validatePasswords()) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            signupConfirm?.focus();
+        }
     });
 })();
